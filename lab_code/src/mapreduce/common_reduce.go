@@ -50,4 +50,40 @@ func doReduce(
 	// }
 	// file.Close()
 	//
+
+	kv_map := make(map[string][]string)
+	for m := 0; m < nMap; m++ {
+		file := reduceName(jobName, m, reduceTaskNumber)
+		content, err := os.Open(file)
+		if err != nil{
+			log.Fatal(err)
+		}
+		dec := json.NewDecoder(content)
+		for {
+			var kv KeyValue
+			err := dec.Decode(&kv)
+			if err == io.EOF{
+				break
+			}else if err != nil {
+				log.Fatal(err)
+			}
+			kv_map[kv.Key] = append(kv_map[kv.Key], kv.Value)
+		}
+		content.Close()
+	}
+	var keys []string
+	for k := range kv_map{
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	out_f, err := os.Create(outFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	enc := json.NewEncoder(out_f)
+	for _, k := range keys{
+		enc.Encode(KeyValue{k, reduceF(k, kv_map[k])})
+	}
+	out_f.Close()
 }

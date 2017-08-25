@@ -57,6 +57,36 @@ func doMap(
 	//     err := enc.Encode(&kv)
 	//
 	// Remember to close the file after you have written all the values!
+
+
+	// create files
+	files := make([]*os.File, nReduce)
+	for idx := range files{
+		name := reduceName(jobName, mapTaskNumber, idx)
+		file, err := os.Create(name)
+		files[idx] = file
+		if err != nil{
+			log.Fatal(err)
+		}
+		defer files[idx].Close()
+		//defer fmt.Println("Close file: ", idx)
+	}
+	// read input
+	contents, err := ioutil.ReadFile(inFile)
+	if err != nil{
+		log.Fatal(err)
+	}
+	k_v := mapF(inFile, string(contents))
+
+	for _,kv := range k_v{
+		r := ihash(kv.Key) % nReduce
+		enc := json.NewEncoder(files[r])
+		err := enc.Encode(&kv)
+		//fmt.Println(kv.Key)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
 }
 
 func ihash(s string) int {
